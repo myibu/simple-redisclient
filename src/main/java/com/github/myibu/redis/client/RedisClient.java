@@ -98,23 +98,23 @@ public class RedisClient {
      */
     public enum RedisReplyType {
         /**
-         * Simple Strings => +OK\r\n
+         * Simple Strings: +OK\r\n
          */
         SIMPLE_STRINGS(PLUS_BYTE),
         /**
-         * Errors => -ERR unknown command 'hello'
+         * Errors:  -ERR unknown command 'hello'
          */
         ERRORS(MINUS_BYTE),
         /**
-         * Integers => :2
+         * Integers:  :2
          */
         INTEGERS(COLON_BYTE),
         /**
-         * Bulk Strings => $6\r\nfoobar\r\n
+         * Bulk Strings:  $6\r\nfoobar\r\n
          */
         BULK_STRINGS(DOLLAR_BYTE),
         /**
-         * Arrays => *2\r\n$3\r\nfoo\r\n$3\r\nbar\r\n
+         * Arrays:  *2\r\n$3\r\nfoo\r\n$3\r\nbar\r\n
          */
         ARRAYS(ASTERISK_BYTE);
 
@@ -457,7 +457,7 @@ public class RedisClient {
 
 
         /**
-         * Simple Strings => +OK\r\n
+         * Simple Strings:  +OK\r\n
          * @return RedisReply
          */
         private RedisReply readSimpleStringsReply() {
@@ -467,7 +467,7 @@ public class RedisClient {
         }
 
         /**
-         * Errors => -ERR unknown command 'hello'
+         * Errors:  -ERR unknown command 'hello'
          * @return RedisReply
          */
         private RedisReply readErrorsReply() {
@@ -479,7 +479,7 @@ public class RedisClient {
         }
 
         /**
-         * Integers => :2
+         * Integers:  :2
          * @return RedisReply
          */
         private RedisReply readIntegersReply() {
@@ -489,7 +489,7 @@ public class RedisClient {
         }
 
         /**
-         * Bulk Strings => $6\r\nfoobar\r\n
+         * Bulk Strings:  $6\r\nfoobar\r\n
          * @return RedisReply
          */
         private RedisReply readBulkStringsReply() {
@@ -504,7 +504,7 @@ public class RedisClient {
         }
 
         /**
-         * Arrays => *2\r\n$3\r\nfoo\r\n$3\r\nbar\r\n
+         * Arrays:  *2\r\n$3\r\nfoo\r\n$3\r\nbar\r\n
          * @return RedisReply
          */
         private RedisReply readArraysReply() {
