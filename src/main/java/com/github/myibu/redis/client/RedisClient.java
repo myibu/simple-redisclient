@@ -16,12 +16,37 @@ import java.util.List;
  */
 public class RedisClient {
     /**
+     * Redis命令
+     */
+    public enum RedisCommand {
+        MODULE, GET, GETEX, GETDEL, SET, SETNX, SETEX, PSETEX, APPEND, STRLEN, DEL, UNLINK, EXISTS, SETBIT,
+        GETBIT, BITFIELD, BITFIELD_RO, SETRANGE, GETRANGE, SUBSTR, INCR, DECR, MGET, RPUSH, LPUSH, RPUSHX,
+        LPUSHX, LINSERT, RPOP, LPOP, BRPOP, BRPOPLPUSH, BLMOVE, BLPOP, LLEN, LINDEX, LSET, LRANGE, LTRIM,
+        LPOS, LREM, RPOPLPUSH, LMOVE, SADD, SREM, SMOVE, SISMEMBER, SMISMEMBER, SCARD, SPOP, SRANDMEMBER,
+        SINTER, SINTERSTORE, SUNION, SUNIONSTORE, SDIFF, SDIFFSTORE, SMEMBERS, SSCAN, ZADD, ZINCRBY, ZREM,
+        ZREMRANGEBYSCORE, ZREMRANGEBYRANK, ZREMRANGEBYLEX, ZUNIONSTORE, ZINTERSTORE, ZDIFFSTORE, ZUNION,
+        ZINTER, ZDIFF, ZRANGE, ZRANGESTORE, ZRANGEBYSCORE, ZREVRANGEBYSCORE, ZRANGEBYLEX, ZREVRANGEBYLEX,
+        ZCOUNT, ZLEXCOUNT, ZREVRANGE, ZCARD, ZSCORE, ZMSCORE, ZRANK, ZREVRANK, ZSCAN, ZPOPMIN, ZPOPMAX,
+        BZPOPMIN, BZPOPMAX, ZRANDMEMBER, HSET, HSETNX, HGET, HMSET, HMGET, HINCRBY, HINCRBYFLOAT, HDEL,
+        HLEN, HSTRLEN, HKEYS, HVALS, HGETALL, HEXISTS, HRANDFIELD, HSCAN, INCRBY, DECRBY, INCRBYFLOAT,
+        GETSET, MSET, MSETNX, RANDOMKEY, SELECT, SWAPDB, MOVE, COPY, RENAME, RENAMENX, EXPIRE, EXPIREAT,
+        PEXPIRE, PEXPIREAT, KEYS, SCAN, DBSIZE, AUTH, PING, ECHO, SAVE, BGSAVE, BGREWRITEAOF, SHUTDOWN,
+        LASTSAVE, TYPE, MULTI, EXEC, DISCARD, SYNC, PSYNC, REPLCONF, FLUSHDB, FLUSHALL, SORT, INFO, MONITOR,
+        TTL, TOUCH, PTTL, PERSIST, SLAVEOF, REPLICAOF, ROLE, DEBUG, CONFIG, SUBSCRIBE, UNSUBSCRIBE, PSUBSCRIBE,
+        PUNSUBSCRIBE, PUBLISH, PUBSUB, WATCH, UNWATCH, CLUSTER, RESTORE,  MIGRATE, ASKING, READONLY, READWRITE,
+        DUMP, OBJECT, MEMORY, CLIENT, HELLO, EVAL, EVALSHA, SLOWLOG, SCRIPT, TIME, BITOP, BITCOUNT, BITPOS, WAIT,
+        COMMAND, GEOADD, GEORADIUS, GEORADIUS_RO, GEORADIUSBYMEMBER, GEORADIUSBYMEMBER_RO, GEOHASH, GEOPOS, GEODIST,
+        GEOSEARCH, GEOSEARCHSTORE, PFSELFTEST, PFADD, PFCOUNT, PFMERGE, PFDEBUG, XADD, XRANGE, XREVRANGE, XLEN, XREAD,
+        XREADGROUP, XGROUP, XSETID, XACK, XPENDING, XCLAIM, XAUTOCLAIM, XINFO, XDEL, XTRIM, POST, LATENCY, LOLWUT, ACL,
+        STRALGO, RESET, FAILOVER;
+    }
+    /**
      * Redis响应
      */
     public static class RedisReply {
-        RedisReplyType type;
-        Object data;
-        byte[] raw;
+        private RedisReplyType type;
+        private Object data;
+        private byte[] raw;
 
         public RedisReplyType getType() {
             return type;
@@ -166,7 +191,12 @@ public class RedisClient {
                 strings.add(args[i]);
             }
         }
-        return execAndReturn(command, strings.toArray(new String[0]));
+        execCommand(command, strings.toArray(new String[0]));
+        try {
+            return ris.readReply();
+        } catch (IOException e) {
+            throw new RedisException("Execute command failed.", e);
+        }
     }
 
     /**
@@ -175,12 +205,10 @@ public class RedisClient {
      * @param args redis命令参数： 如： [foo bar]
      * @return 执行结果
      */
-    public RedisReply execAndReturn(String command, String ...args) {
-        exec(command, args);
+    public RedisReply execAndReturn(RedisCommand command, String ...args) {
+        execCommand(command.name(), args);
         try {
-            RedisReply re =  ris.readReply();
-            System.out.println(re);
-            return re;
+            return ris.readReply();
         } catch (IOException e) {
             throw new RedisException("Execute command failed.", e);
         }
@@ -199,7 +227,12 @@ public class RedisClient {
                 strings.add(args[i]);
             }
         }
-        exec(command, strings.toArray(new String[0]));
+        try {
+            execCommand(command, strings.toArray(new String[0]));
+            ris.readReply();
+        } catch (IOException e) {
+            throw new RedisException("Execute command failed.", e);
+        }
     }
 
     /**
@@ -207,21 +240,29 @@ public class RedisClient {
      * @param command redis命令，如：set
      * @param args redis命令参数： 如： [foo bar]
      */
-    public void exec(String command, String ...args) {
+    public void exec(RedisCommand command, String ...args) {
         try {
-            byte[] commandBytes = command.getBytes(DEFAULT_CHARSET);
-            byte[][] argBytes = new byte[args.length][];
-            for (int i = 0; i < args.length; i++) {
-                argBytes[i] = args[i].getBytes(DEFAULT_CHARSET);
-            }
-            doExec(commandBytes, argBytes);
+            execCommand(command.name(), args);
             ris.readReply();
         } catch (IOException e) {
             throw new RedisException("Execute command failed.", e);
         }
     }
 
-    private void doExec(byte[] command, byte[][] args) {
+    private void execCommand(String command, String ...args) {
+        try {
+            byte[] commandBytes = command.getBytes(DEFAULT_CHARSET);
+            byte[][] argBytes = new byte[args.length][];
+            for (int i = 0; i < args.length; i++) {
+                argBytes[i] = args[i].getBytes(DEFAULT_CHARSET);
+            }
+            doExecCommand(commandBytes, argBytes);
+        } catch (IOException e) {
+            throw new RedisException("Execute command failed.", e);
+        }
+    }
+
+    private void doExecCommand(byte[] command, byte[][] args) {
         try {
             ros.reset();
             checkConnectState();
@@ -381,7 +422,6 @@ public class RedisClient {
         }
 
         private String readStringCrlf() {
-            ByteArrayOutputStream bos = new ByteArrayOutputStream();
             bos.reset();
             int pre = pos;
             while (pos < count) {
@@ -391,7 +431,7 @@ public class RedisClient {
                     }
                 }
             }
-            bos.write(buf, pre, pos-2);
+            bos.write(buf, pre, pos-pre-1);
             return new String(bos.toByteArray());
         }
 
