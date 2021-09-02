@@ -496,8 +496,10 @@ public class RedisClient {
             int pre = pos-1;
             int value = readIntegerCrlf();
             bos.reset();
-            bos.write(buf, pos, value);
-            pos = pos + value + 2;
+            if (value >  0) {
+                bos.write(buf, pos, value);
+                pos = pos + value + 2;
+            }
             RedisReply reply = RedisReply.create(buf, pre, pos - pre, RedisReplyType.BULK_STRINGS);
             reply.setData(new String(bos.toByteArray()));
             return reply;
