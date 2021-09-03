@@ -532,8 +532,20 @@ public class RedisClient {
 
         @Override
         public int read() throws IOException {
-            int len = fis.read(buf);
-            count += len;
+            bos.reset();
+            int firstByte = fis.read();
+            bos.write(firstByte);
+            count += 1;
+            int available = 0;
+            while ((available = fis.available()) > 0) {
+                count += available;
+                byte[] by = new byte[available];
+                fis.read(by, 0, available);
+                bos.write(by, 0, available);
+            }
+            byte[] src = bos.toByteArray();
+            buf = new byte[count];
+            System.arraycopy(src, 0, buf, 0, count);
             return buf[pos++];
         }
     }
