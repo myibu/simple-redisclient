@@ -26,7 +26,7 @@ tasks.withType(JavaCompile) { options.encoding = "UTF-8" }
 
 group = 'com.github.myibu'
 archivesBaseName = "simple-redisclient"
-version = "1.0.1a"
+version = "1.0.1b"
 
 repositories {
     mavenCentral()

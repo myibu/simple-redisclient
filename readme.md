@@ -89,7 +89,7 @@ private static void sendCommand(final RedisOutputStream os, final byte[] command
 <dependency>
   <groupId>com.github.myibu</groupId>
   <artifactId>simple-redisclient</artifactId>
-  <version>1.0.1a</version>
+  <version>1.0.1b</version>
 </dependency>
 ```
 
