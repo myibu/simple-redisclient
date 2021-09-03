@@ -472,8 +472,6 @@ public class RedisClient {
          */
         private RedisReply readErrorsReply() {
             RedisReply reply = RedisReply.create(buf, pos-1, count, RedisReplyType.ERRORS);
-            // skip "ERR"
-            pos += 4;
             reply.setData(readStringCrlf());
             return reply;
         }
