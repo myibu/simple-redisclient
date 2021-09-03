@@ -25,7 +25,7 @@ public class RedisClientTest {
     }
 
     /**
-     * RedisReply{type=ERRORS, data=wrong number of arguments for 'client' command, raw=-ERR wrong number of arguments for 'client' command\r\n}
+     * RedisReply{type=ERRORS, data=ERR wrong number of arguments for 'client' command, raw=-ERR wrong number of arguments for 'client' command\r\n}
      */
     @Test
     public void test02Errors() {
