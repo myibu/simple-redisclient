@@ -60,4 +60,21 @@ public class RedisClientTest {
         redisReply = redisClient.execAndReturn("lrange kk 0 10");
         System.out.println(redisReply);
     }
+
+    @Test
+    public void test06PSubscribe() {
+        redisReply = redisClient.execAndReturn(RedisClient.RedisCommand.PSUBSCRIBE, "adb");
+        System.out.println(redisReply);
+    }
+
+    @Test
+    public void test07NullBulkString() throws Exception {
+        RedisClient.RedisInputStream redisInputStream = new RedisClient.RedisInputStream("$-1\r\n");
+        RedisClient.RedisReply redisReply = redisInputStream.readReply();
+        System.out.println(redisReply);
+
+        RedisClient.RedisInputStream redisInputStream2 = new RedisClient.RedisInputStream("$6\r\nfoobar\r\n");
+        RedisClient.RedisReply redisReply2 = redisInputStream2.readReply();
+        System.out.println(redisReply2);
+    }
 }

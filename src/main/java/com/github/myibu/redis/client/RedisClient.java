@@ -1,11 +1,9 @@
 package com.github.myibu.redis.client;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -132,6 +130,8 @@ public class RedisClient {
 
     public static final String DEFAULT_CHARSET = "UTF-8";
     public static final String CRLF = "\r\n";
+    public static final byte CR = '\r';
+    public static final byte LF = '\n';
     public static final int MAX_SIZE = 8192;
 
     private Socket socket;
@@ -153,7 +153,7 @@ public class RedisClient {
             socket = createSocket(socketAddress);
             ros = new RedisOutputStream(socket.getOutputStream());
             ris = new RedisInputStream(socket.getInputStream());
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new RedisException("Create redis client failed.", e);
         }
     }
@@ -194,7 +194,7 @@ public class RedisClient {
         execCommand(command, strings.toArray(new String[0]));
         try {
             return ris.readReply();
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new RedisException("Execute command failed.", e);
         }
     }
@@ -209,7 +209,7 @@ public class RedisClient {
         execCommand(command.name(), args);
         try {
             return ris.readReply();
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new RedisException("Execute command failed.", e);
         }
     }
@@ -230,7 +230,7 @@ public class RedisClient {
         try {
             execCommand(command, strings.toArray(new String[0]));
             ris.readReply();
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new RedisException("Execute command failed.", e);
         }
     }
@@ -244,7 +244,7 @@ public class RedisClient {
         try {
             execCommand(command.name(), args);
             ris.readReply();
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new RedisException("Execute command failed.", e);
         }
     }
@@ -257,7 +257,7 @@ public class RedisClient {
                 argBytes[i] = args[i].getBytes(DEFAULT_CHARSET);
             }
             doExecCommand(commandBytes, argBytes);
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new RedisException("Execute command failed.", e);
         }
     }
@@ -280,7 +280,7 @@ public class RedisClient {
                 ros.writeCrLf();
             }
             ros.flush();
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new RedisException("Execute command failed.", e);
         }
     }
@@ -354,8 +354,8 @@ public class RedisClient {
             if (count + CRLF.length() >= buf.length) {
                 flush();
             }
-            buf[count++] = '\r';
-            buf[count++] = '\n';
+            buf[count++] = CR;
+            buf[count++] = LF;
         }
 
         public synchronized void writeIntCrLf(int value) throws IOException {
@@ -394,6 +394,13 @@ public class RedisClient {
             this.bos = new ByteArrayOutputStream();
         }
 
+        public RedisInputStream(String rawStr) {
+            byte[] rawBytes = rawStr.getBytes(StandardCharsets.UTF_8);
+            this.fis = new ByteArrayInputStream(rawBytes);
+            this.buf = new byte[rawBytes.length];
+            this.bos = new ByteArrayOutputStream();
+        }
+
         public RedisReply readReply() throws IOException {
             count = 0;
             pos = 0;
@@ -425,14 +432,15 @@ public class RedisClient {
             bos.reset();
             int pre = pos;
             while (pos < count) {
-                if (buf[pos++] == '\r') {
-                    if (buf[pos] == '\n') {
+                final byte b = buf[pos++];
+                if (b == CR) {
+                    if (buf[pos++] == LF) {
                         break;
                     }
                 }
             }
-            bos.write(buf, pre, pos-pre-1);
-            return new String(bos.toByteArray());
+            bos.write(buf, pre, (pos - 2) - pre);
+            return bos.toString();
         }
 
         private int readIntegerCrlf() {
@@ -443,9 +451,9 @@ public class RedisClient {
                 isNegative = true;
             }
             while (pos < count) {
-                final int b = buf[pos++];
-                if (b == '\r') {
-                    if (buf[pos++] == '\n') {
+                final byte b = buf[pos++];
+                if (b == CR) {
+                    if (buf[pos++] == LF) {
                         break;
                     }
                 } else {
@@ -481,7 +489,17 @@ public class RedisClient {
          * @return RedisReply
          */
         private RedisReply readIntegersReply() {
-            RedisReply reply = RedisReply.create(buf, pos-1, count, RedisReplyType.INTEGERS);
+            int p = pos;
+            while (p < count) {
+                final byte b = buf[p++];
+                if (b == CR) {
+                   if (buf[p++] == LF) {
+                       break;
+                   }
+               }
+            }
+            int len = p - pos + 1;
+            RedisReply reply = RedisReply.create(buf, pos-1, len, RedisReplyType.INTEGERS);
             reply.setData(Integer.valueOf(readStringCrlf()));
             return reply;
         }
@@ -498,8 +516,9 @@ public class RedisClient {
                 bos.write(buf, pos, value);
                 pos = pos + value + 2;
             }
-            RedisReply reply = RedisReply.create(buf, pre, pos - pre, RedisReplyType.BULK_STRINGS);
-            reply.setData(new String(bos.toByteArray()));
+            int len = pos - pre;
+            RedisReply reply = RedisReply.create(buf, pre, len, RedisReplyType.BULK_STRINGS);
+            reply.setData(bos.toString());
             return reply;
         }
 
@@ -515,11 +534,20 @@ public class RedisClient {
                 byte firstByte = buf[pos++];
                 RedisReply innerReply;
                 switch (firstByte) {
+                    case PLUS_BYTE:
+                        innerReply = readSimpleStringsReply();
+                        break;
+                    case MINUS_BYTE:
+                        innerReply = readErrorsReply();
+                        break;
                     case COLON_BYTE:
                         innerReply = readIntegersReply();
                         break;
                     case DOLLAR_BYTE:
                         innerReply = readBulkStringsReply();
+                        break;
+                    case ASTERISK_BYTE:
+                        innerReply = readArraysReply();
                         break;
                     default:
                         throw new RedisException("Unknown protocol begin with byte " + firstByte);
@@ -536,7 +564,7 @@ public class RedisClient {
             int firstByte = fis.read();
             bos.write(firstByte);
             count += 1;
-            int available = 0;
+            int available;
             while ((available = fis.available()) > 0) {
                 count += available;
                 byte[] by = new byte[available];
