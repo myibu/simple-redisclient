@@ -5,6 +5,8 @@ import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;
 
+import java.util.List;
+
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class RedisClientTest {
    static RedisClient redisClient;
@@ -76,5 +78,19 @@ public class RedisClientTest {
         RedisClient.RedisInputStream redisInputStream2 = new RedisClient.RedisInputStream("$6\r\nfoobar\r\n");
         RedisClient.RedisReply redisReply2 = redisInputStream2.readReply();
         System.out.println(redisReply2);
+    }
+
+    @Test
+    public void test08Arrays() throws Exception {
+        RedisClient.RedisInputStream redisInputStream = new RedisClient.RedisInputStream("*2\r\n$3\r\nfoo\r\n$3\r\nbar\r\n");
+        List<RedisClient.RedisReply> redisReply = redisInputStream.readReplies();
+        System.out.println(redisReply);
+    }
+
+    @Test
+    public void test09MultipleArrays() throws Exception {
+        RedisClient.RedisInputStream redisInputStream = new RedisClient.RedisInputStream("*3\r\n$9\r\nsubscribe\r\n$3\r\nfoo\r\n:1\r\n*3\r\n$7\r\nmessage\r\n$3\r\nfoo\r\n$3\r\nHi0\r\n");
+        List<RedisClient.RedisReply> redisReply = redisInputStream.readReplies();
+        System.out.println(redisReply);
     }
 }

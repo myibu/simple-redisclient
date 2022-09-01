@@ -89,13 +89,20 @@ private static void sendCommand(final RedisOutputStream os, final byte[] command
 <dependency>
   <groupId>com.github.myibu</groupId>
   <artifactId>simple-redisclient</artifactId>
-  <version>1.0.2</version>
+  <version>1.0.3</version>
 </dependency>
 ```
 
 ## Examples
 ```java
 RedisClient redisClient = new RedisClient();
-RedisClient.RedisReply reply = redisClient.execAndReturn("get foo");
+List<RedisClient.RedisReply> reply = redisClient.execAndReturnMore("get foo");
 System.out.println(reply);
 ```
+
+## Change Notes
+### 1.0.2
+- support `Null Bulk String`
+
+### 1.0.3
+- support return multiple reply
